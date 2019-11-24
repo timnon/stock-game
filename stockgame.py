@@ -67,7 +67,7 @@ def new_demand(randomly=True):
 	df['Demand'] = df['Forecast'].apply(forecast2demands).apply(random.choice)
 	df.to_csv(filename)
 	################%%
-	
+
 def clean(randomly=True):
 	################%%
 	df = pd.read_csv(filename).set_index('Round')
@@ -85,7 +85,7 @@ def fill():
 	for team in teams:
 		for i,row in df.iterrows():
 			demand = df.loc[i]['Demand']*df.loc[i]['%s-Factor'%team]
-			df.set_value(i,'%s-Demand'%team,demand)
+			df.at[i,'%s-Demand'%team] = demand
 			if i == df.index.min():
 				stock = start_stock
 				money = start_money
@@ -94,18 +94,18 @@ def fill():
 				stock = df.loc[i-1]['%s-Stock'%team]
 			if team == 'Robot' and not np.isnan(demand):
 				order = Order[i,stock]
-				df.set_value(i,'%s-Order'%team,order)
+				df.at[i,'%s-Order'%team] = order
 			else:
 				order = df.loc[i]['%s-Order'%team]
 			new_money, new_stock = step(money,stock,order,demand)
-			df.set_value(i,'%s-Money'%team,new_money)
-			df.set_value(i,'%s-Stock'%team,new_stock)		
+			df.at[i,'%s-Money'%team] = new_money
+			df.at[i,'%s-Stock'%team] = new_stock
 	#display(HTML(df.to_html()))
 	print(df)
 	plot_table(df)
 	plot_stats(df)
 	################%%
-	
+
 def plot_table(df):
 	################%%
 	colors_ = [ color.replace('rgb','rgba')[:-1]+',0.4)' for color in colors ]
@@ -114,7 +114,7 @@ def plot_table(df):
 	traces_money = []
 	traces2 = []
 	traces += [ go.Bar(x=df.index,y=df['Demand'],marker=dict(color='lightgrey'),name='Demand') ]
-			   	
+
 	weather_colors = ['lightgrey','lightblue','yellow']
 	traces += [ go.Scatter(x=df.index,y=[df.max().max()+2]*len(df),mode='markers',marker=dict(size=30,color=df['Forecast'].astype(int).apply(weather_colors.__getitem__)),name='Weather',showlegend=True) ]
 
@@ -130,7 +130,7 @@ def plot_table(df):
 		#traces2 += [ go.Bar(x=[0]+list(df.index),y=df['%s-Order'%team],name='%s-Order'%team,marker=dict(color=colors_[j])) ]
 		traces_stock += [ go.Scatter(x=[0]+list(df.index),y=[start_stock]+list(df['%s-Stock'%team]),name='%i %s-Stock'%(last_stock,team),mode='lines',line=dict(color=colors[j],width=10),marker=dict(color=colors_[j],size=20))]
 		traces_money += [ go.Scatter(x=[0]+list(df.index),y=[start_money]+list(df['%s-Money'%team]),name='%i %s-Money'%(last_money,team),mode='lines',line=dict(color=colors_[j],width=10,dash='dot'),marker=dict(color=colors_[j],size=30,symbol=18))]
-		
+
 	layout = go.Layout(
 	height=1000,
 	width=2000,
@@ -144,7 +144,7 @@ def plot_table(df):
 	plot(fig, filename = 'table.html', auto_open=False,show_link=False)
 	################%%
 
-	
+
 def plot_stats(df):
 	################%%
 	traces = []
@@ -156,7 +156,7 @@ def plot_stats(df):
 	    s = df_stats.sum()[cols]
 	    color = colors[i]
 	    traces.append( go.Bar(x=['Demand','Orders','NumOrders'],y=s,name=team,marker=dict(color=color)) )
-	    
+
 	layout = go.Layout(
 	height=1000,
 	width=2000,
@@ -167,8 +167,8 @@ def plot_stats(df):
 	#iplot(fig,show_link=False)
 	plot(fig, filename = 'stats.html', auto_open=False,show_link=False)
 	################%%
-	
-	
+
+
 def compute_strategy(df):
 	################%%
 	rounds = df.index
@@ -188,7 +188,7 @@ def compute_strategy(df):
 					moneys = []
 					money = 0
 					for demand in demand_range:
-						new_money, new_stock = step(money,stock,order,demand)						
+						new_money, new_stock = step(money,stock,order,demand)
 						diff_money = new_money - money
 						if (i+1,new_stock) in Money:
 							moneys += [diff_money+Money[i+1,new_stock]]
@@ -197,20 +197,18 @@ def compute_strategy(df):
 				if order2money:
 					order2money = pd.Series(order2money)
 					Money[i,stock] = order2money.max()
-					Order[i,stock] = order2money.argmax()
+					Order[i,stock] = order2money.idxmax()
 	print('max order:',max(Order.values()))
 	print('max money:',max(Money.values()))
-	################%%	
+	################%%
 	return Order, Money
 
 
 
-	
+
 if __name__ == "__main__":
 	if 'new_demand' in sys.argv:
 		new_demand()
 	if 'clean' in sys.argv:
-		clean()		
+		clean()
 	fill()
-	
-	
